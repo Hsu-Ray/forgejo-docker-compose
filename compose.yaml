@@ -1,0 +1,68 @@
+# sudo mkdir -p fjdata pgdata && sudo chown 1000:1000 fjdata pgdata
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:11
+    container_name: forgejo-core
+    restart: unless-stopped
+    depends_on:
+      fjpgsql:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      USER_UID: 1000
+      USER_GID: 1000
+      FORGEJO__server__DOMAIN: 113.54.212.107
+      FORGEJO__server__ROOT_URL: "http://113.54.212.107:3000"
+      FORGEJO__server__HTTP_PORT: 3000
+      FORGEJO__server__LOCAL_ROOT_URL: "http://113.54.212.107:3000"
+      FORGEJO__server__START_SSH_SERVER: true
+      FORGEJO__server__SSH_DOMAIN: 113.54.212.107
+      FORGEJO__server__SSH_PORT: 2222
+      FORGEJO__server__SSH_LISTEN_PORT: 2222
+      FORGEJO__server__OFFLINE_MODE: true
+      FORGEJO__server__ENABLE_GZIP: true
+      FORGEJO__server__LANDING_PAGE: login
+      FORGEJO__server__LFS_START_SERVER: true
+      FORGEJO__database__DB_TYPE: postgres
+      FORGEJO__database__HOST: fjpgsql
+      FORGEJO__database__NAME: forgejo
+      FORGEJO__database__USER: forgejo
+      FORGEJO__database__PASSWD: forgejo
+      FORGEJO__openid__ENABLE_OPENID_SIGNIN: false
+      FORGEJO__openid__ENABLE_OPENID_SIGNUP: false
+      FORGEJO__service__DISABLE_REGISTRATION: false
+      FORGEJO__service__ENABLE_NOTIFY_MAIL: false
+      FORGEJO__service__REQUIRE_SIGNIN_VIEW: true
+      FORGEJO__service.explore__REQUIRE_SIGNIN_VIEW: true
+      FORGEJO__service.explore__DISABLE_USERS_PAGE: true
+      FORGEJO__mailer__ENABLED: false
+      FORGEJO__time__DEFAULT_UI_LOCATION: "Asia/Shanghai"
+    ports:
+      - "3000:3000"
+      - "2222:2222"
+    volumes:
+      - ./fjdata:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '128m'
+  fjpgsql:
+    image: docker.1ms.run/postgres:17-alpine
+    container_name: forgejo-pgsql
+    restart: unless-stopped
+    user: 1000:1000
+    environment:
+      TZ: Asia/Shanghai
+      LANG: zh_CN.utf8
+      POSTGRES_DB: forgejo
+      POSTGRES_USER: forgejo
+      POSTGRES_PASSWORD: forgejo
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -h localhost -U forgejo -d forgejo
+      interval: 5s
+      timeout: 3s
+      retries: 15
